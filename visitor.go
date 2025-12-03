@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-// Transpile é o "Visitor" principal. Ele caminha pela árvore AST do Go
-// e decide como escrever o código Kotlin correspondente.
 func (t *Transpiler) Transpile(node ast.Node) error {
 	switch n := node.(type) {
 	
@@ -17,31 +15,27 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.writeLine("package " + n.Name.Name)
 		t.write("\n")
 		
-		// Imports
-		for _, imp := range n.Imports {
-			path := strings.Trim(imp.Path.Value, "\"")
-			if path != "fmt" { 
-				t.writeLine("import " + path)
-			} else {
-				// ALINHAMENTO VISUAL:
-				// Inserimos uma linha vazia onde estava o 'import "fmt"'.
-				// Assim, o código Kotlin desce uma linha e fica pareado com o Go.
-				t.write("\n") 
+		if len(n.Imports) > 0 {
+			for _, imp := range n.Imports {
+				path := strings.Trim(imp.Path.Value, "\"")
+				if path != "fmt" { 
+					t.writeLine("import " + path)
+				}
 			}
+			t.write("\n")
 		}
-		t.write("\n")
 		
-		// Declarações Globais
+		// Declarações Globais (Funções, Variáveis Globais)
 		for _, decl := range n.Decls {
 			t.Transpile(decl)
-			t.write("\n")
+			t.write("\n\n") 
 		}
 
 	// --- Funções ---
 	case *ast.FuncDecl:
 		t.writeIndent()
 		
-		// PDF Seção 5: Visibilidade (Uppercase = public)
+		// Visibilidade
 		if ast.IsExported(n.Name.Name) {
 			t.write("public ")
 		} else {
@@ -50,7 +44,7 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		
 		t.write("fun " + n.Name.Name + "(")
 		
-		// Parâmetros: (a int) -> (a: Int)
+		// Parâmetros
 		if n.Type.Params != nil {
 			for i, field := range n.Type.Params.List {
 				if i > 0 { t.write(", ") }
@@ -108,7 +102,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 
 	// --- Atribuição ---
 	case *ast.AssignStmt:
-		// PDF Tabela 2: := vira var com inferência
 		for i, lhs := range n.Lhs {
 			if n.Tok == token.DEFINE {
 				t.write("var ") 
@@ -123,22 +116,34 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 	case *ast.ExprStmt:
 		t.Transpile(n.X)
 
-	// --- Chamadas de Função ---
+	// --- Chamadas de Função (I/O) ---
 	case *ast.CallExpr:
-		// Tratamento especial: fmt.Println -> println
-		isFmtPrint := false
+		isHandled := false
 		if sel, ok := n.Fun.(*ast.SelectorExpr); ok {
 			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "fmt" {
+				
+				// 1. Saída (Print)
 				if strings.HasPrefix(sel.Sel.Name, "Print") {
 					cmd := "print"
 					if sel.Sel.Name == "Println" { cmd = "println" }
 					t.write(cmd)
-					isFmtPrint = true
+					isHandled = true
+				} 
+				
+				// 2. Entrada (Scan)
+				if strings.HasPrefix(sel.Sel.Name, "Scan") {
+					if len(n.Args) > 0 {
+						t.Transpile(n.Args[0]) 
+						t.write(" = readln()") 
+						t.write(" // !! Converter tipo se necessario")
+						isHandled = true
+						return nil 
+					}
 				}
 			}
 		}
 
-		if !isFmtPrint {
+		if !isHandled {
 			t.Transpile(n.Fun)
 		}
 
@@ -151,7 +156,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 
 	// --- Controle de Fluxo (IF) ---
 	case *ast.IfStmt:
-		// PDF Seção 3: If com Init precisa de escopo 'run {}'
 		if n.Init != nil {
 			t.write("run {\n")
 			t.indent()
@@ -161,7 +165,7 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			t.writeIndent()
 		}
 
-		t.write("if (") // Parênteses obrigatórios em Kotlin
+		t.write("if (")
 		t.Transpile(n.Cond)
 		t.write(") ")
 		t.Transpile(n.Body)
@@ -180,7 +184,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 
 	// --- Controle de Fluxo (FOR -> WHILE) ---
 	case *ast.ForStmt:
-		// PDF Seção 4: Traduzir 'for' C-Style para 'while' dentro de 'run'
 		t.write("run {\n")
 		t.indent()
 		
@@ -238,6 +241,20 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.Transpile(n.X)
 		t.write(" " + n.Op.String() + " ")
 		t.Transpile(n.Y)
+
+	case *ast.UnaryExpr:
+		op := n.Op.String()
+		if op == "&" {
+			t.Transpile(n.X)
+		} else {
+			t.write(op)
+			t.Transpile(n.X)
+		}
+
+	case *ast.ParenExpr:
+		t.write("(")
+		t.Transpile(n.X)
+		t.write(")")
 
 	case *ast.Ident:
 		t.write(n.Name)
