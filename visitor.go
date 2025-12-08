@@ -14,10 +14,13 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.writeLine("package " + n.Name.Name)
 		t.write("\n")
 		
+		t.writeLine("import kotlinx.coroutines.*")
+		t.writeLine("import kotlinx.coroutines.channels.Channel")
+		
 		if len(n.Imports) > 0 {
 			for _, imp := range n.Imports {
 				path := strings.Trim(imp.Path.Value, "\"")
-				if path != "fmt" { 
+				if path != "fmt" && path != "time" { 
 					t.writeLine("import " + path)
 				}
 			}
@@ -30,7 +33,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		}
 
 	case *ast.GenDecl:
-		// STRUCTS
 		if n.Tok == token.TYPE {
 			for _, spec := range n.Specs {
 				ts := spec.(*ast.TypeSpec)
@@ -66,7 +68,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			return nil
 		}
 		
-		// VARIAVEIS E CONSTANTES
 		if n.Tok == token.VAR || n.Tok == token.CONST {
 			keyword := "var"
 			if n.Tok == token.CONST { keyword = "val" }
@@ -104,6 +105,18 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.writeIndent()
 		if ast.IsExported(n.Name.Name) { t.write("public ") } else { t.write("internal ") }
 		t.write("fun ")
+		
+		if n.Type.TypeParams != nil {
+			t.write("<")
+			for i, field := range n.Type.TypeParams.List {
+				if i > 0 { t.write(", ") }
+				for j, name := range field.Names {
+					if j > 0 { t.write(", ") }
+					t.write(name.Name)
+				}
+			}
+			t.write("> ")
+		}
 
 		recvParamName := ""
 		recvTypeName := ""
@@ -124,7 +137,12 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			retType := t.resolveType(n.Type.Results.List[0].Type)
 			t.write(": " + retType)
 		}
-		t.write(" ")
+		
+		if n.Name.Name == "main" {
+			t.write(" = runBlocking ")
+		} else {
+			t.write(" ")
+		}
 		
 		if recvParamName != "" && recvParamName != "_" {
 			t.write("{\n")
@@ -154,9 +172,92 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.write(" ")
 		t.Transpile(n.Body)
 
-	// --- SWITCH / WHEN ---
+	case *ast.SendStmt:
+		t.Transpile(n.Chan)
+		t.write(".send(")
+		t.Transpile(n.Value)
+		t.write(")")
+
+	// --- UNARY EXPR ---
+	case *ast.UnaryExpr:
+    switch n.Op.String() {
+    case "<-":
+        // Canal: <-ch
+        t.Transpile(n.X)
+        t.write(".receive()")
+
+    case "&":
+        // Ponteiro: &x (Ignora em Kotlin)
+        t.Transpile(n.X)
+
+    default:
+        // Outros: !x, -x, +x
+        t.write(n.Op.String())
+        t.Transpile(n.X)
+    }
+
+
+	case *ast.GoStmt:
+		t.write("launch {\n")
+		t.indent()
+		
+		if call, ok := n.Call.Fun.(*ast.FuncLit); ok {
+			for _, stmt := range call.Body.List {
+				t.writeIndent()
+				t.Transpile(stmt)
+				t.write("\n")
+			}
+		} else {
+			t.writeIndent()
+			t.Transpile(n.Call)
+			t.write("\n")
+		}
+		
+		t.unindent()
+		t.writeIndent()
+		t.write("}")
+
+	case *ast.TypeAssertExpr:
+		t.Transpile(n.X)
+		t.write(" as ")
+		t.write(t.resolveType(n.Type))
+
+	case *ast.RangeStmt:
+		t.write("for (")
+		key := "_"
+		if n.Key != nil {
+			if id, ok := n.Key.(*ast.Ident); ok {
+				key = id.Name
+			}
+		}
+		val := ""
+		if n.Value != nil {
+			if id, ok := n.Value.(*ast.Ident); ok {
+				val = id.Name
+			}
+		}
+		if key != "_" && val != "" {
+			t.write("(" + key + ", " + val + ") in ")
+			t.Transpile(n.X)
+			t.write(".withIndex()")
+		} else if key == "_" && val != "" {
+			t.write(val + " in ")
+			t.Transpile(n.X)
+		} else {
+			t.write(key + " in ")
+			t.Transpile(n.X)
+			t.write(".indices")
+		}
+		t.write(") ")
+		t.Transpile(n.Body)
+
+	case *ast.BranchStmt:
+		t.write(n.Tok.String())
+		if n.Label != nil {
+			t.write("@" + n.Label.Name)
+		}
+
 	case *ast.SwitchStmt:
-		// Se tiver inicialização (switch x := 10; x {...}), isola o escopo
 		if n.Init != nil {
 			t.write("run {\n")
 			t.indent()
@@ -167,14 +268,12 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		}
 
 		t.write("when")
-		// Se tiver tag (switch x {...}), gera 'when(x)'. Se não (switch {...}), gera 'when'
 		if n.Tag != nil {
 			t.write(" (")
 			t.Transpile(n.Tag)
 			t.write(")")
 		}
 		t.write(" ")
-		
 		t.Transpile(n.Body)
 
 		if n.Init != nil {
@@ -184,13 +283,10 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			t.write("}")
 		}
 
-	// --- CASE ---
 	case *ast.CaseClause:
 		if n.List == nil {
-			// default:
 			t.write("else -> ")
 		} else {
-			// case "A", "B":
 			for i, expr := range n.List {
 				if i > 0 { t.write(", ") }
 				t.Transpile(expr)
@@ -198,7 +294,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			t.write(" -> ")
 		}
 		
-		// Gera bloco para o corpo do case
 		t.write("{\n")
 		t.indent()
 		for _, stmt := range n.Body {
@@ -226,9 +321,8 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		case *ast.MapType:
 			t.write("mutableMapOf")
 		case nil:
-			// Tipo implícito
 		default:
-			t.Transpile(n.Type)
+			t.Transpile(n.Type) 
 		}
 		
 		t.write("(")
@@ -244,6 +338,17 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		t.Transpile(n.Value)
 
 	case *ast.SelectorExpr:
+		if x, ok := n.X.(*ast.Ident); ok && x.Name == "time" {
+			switch n.Sel.Name {
+			case "Second":
+				t.write("1000L")
+				return nil
+			case "Millisecond":
+				t.write("1L")
+				return nil
+			}
+		}
+
 		varVarName := ""
 		if ident, ok := n.X.(*ast.Ident); ok {
 			varVarName = ident.Name
@@ -318,6 +423,11 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 							return nil
 						}
 					}
+					if ch, ok := n.Args[0].(*ast.ChanType); ok {
+						innerType := t.resolveType(ch.Value)
+						t.write("Channel<" + innerType + ">()")
+						return nil
+					}
 				}
 			}
 			if ident.Name == "append" && len(n.Args) >= 2 {
@@ -332,53 +442,65 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 
 		isHandled := false
 		if sel, ok := n.Fun.(*ast.SelectorExpr); ok {
-			if x, ok := sel.X.(*ast.Ident); ok && x.Name == "fmt" {
-				// Printf
-				if sel.Sel.Name == "Printf" {
-					t.write("System.out.printf(") 
-					for i, arg := range n.Args {
-						if i > 0 { t.write(", ") }
-						t.Transpile(arg)
-					}
-					t.write(")")
+			if x, ok := sel.X.(*ast.Ident); ok {
+				if x.Name == "time" && sel.Sel.Name == "Sleep" {
+					t.write("delay")
 					isHandled = true
-					return nil 
 				}
-
-				// Print / Println
-				if strings.HasPrefix(sel.Sel.Name, "Print") {
-					cmd := "print"
-					if sel.Sel.Name == "Println" { cmd = "println" }
-					if len(n.Args) > 1 {
-						t.write(cmd + "(\"\" + ") 
+				if x.Name == "fmt" {
+					if sel.Sel.Name == "Printf" {
+						t.write("System.out.printf(") 
 						for i, arg := range n.Args {
-							if i > 0 { t.write(" + \" \" + ") }
+							if i > 0 { t.write(", ") }
 							t.Transpile(arg)
 						}
 						t.write(")")
 						isHandled = true
 						return nil 
-					} else {
-						t.write(cmd)
-						isHandled = true
 					}
-				} 
-				
-				// Scan
-				if strings.HasPrefix(sel.Sel.Name, "Scan") {
-					if len(n.Args) > 0 {
-						t.Transpile(n.Args[0]) 
-						t.write(" = readln()") 
-						t.write(" // !! Converter tipo se necessario")
-						isHandled = true
-						return nil 
+
+					if strings.HasPrefix(sel.Sel.Name, "Print") {
+						cmd := "print"
+						if sel.Sel.Name == "Println" { cmd = "println" }
+						if len(n.Args) > 1 {
+							t.write(cmd + "(\"") 
+							for i, arg := range n.Args {
+								if i > 0 { t.write(" ") }
+								t.write("${")
+								t.Transpile(arg)
+								t.write("}")
+							}
+							t.write("\")")
+							isHandled = true
+							return nil 
+						} else {
+							t.write(cmd)
+							isHandled = true
+						}
+					} 
+					
+					if strings.HasPrefix(sel.Sel.Name, "Scan") {
+						if len(n.Args) > 0 {
+							t.Transpile(n.Args[0]) 
+							t.write(" = readln()") 
+							t.write(" // !! Converter tipo se necessario")
+							isHandled = true
+							return nil 
+						}
 					}
 				}
 			}
 		}
 		if !isHandled {
-			t.Transpile(n.Fun)
+			if _, isFuncLit := n.Fun.(*ast.FuncLit); isFuncLit {
+				t.write("(")
+				t.Transpile(n.Fun)
+				t.write(")")
+			} else {
+				t.Transpile(n.Fun)
+			}
 		}
+		
 		t.write("(")
 		for i, arg := range n.Args {
 			if i > 0 { t.write(", ") }
@@ -465,15 +587,6 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 			t.Transpile(n.X)
 			t.write(" " + n.Op.String() + " ")
 			t.Transpile(n.Y)
-		}
-
-	case *ast.UnaryExpr:
-		op := n.Op.String()
-		if op == "&" {
-			t.Transpile(n.X)
-		} else {
-			t.write(op)
-			t.Transpile(n.X)
 		}
 
 	case *ast.ParenExpr:

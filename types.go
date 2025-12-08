@@ -25,6 +25,7 @@ var typeMapping = map[string]string{
 	"bool":    "Boolean",
 	"string":  "String",
 	"uintptr": "Long",
+	"any":     "Any",
 }
 
 func (t *Transpiler) resolveType(expr ast.Expr) string {
@@ -49,6 +50,12 @@ func (t *Transpiler) resolveType(expr ast.Expr) string {
 
 	case *ast.SelectorExpr:
 		return t.resolveType(e.X) + "." + e.Sel.Name
+
+	case *ast.InterfaceType:
+		if e.Methods == nil || len(e.Methods.List) == 0 {
+			return "Any"
+		}
+		return "Any"
 
 	case *ast.FuncType:
 		var params []string
