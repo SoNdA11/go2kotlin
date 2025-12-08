@@ -1,4 +1,4 @@
-<p align="center"> <img src="print-go2kt.png" alt="Go2Kotlin Demo" width="650"> </p> <p align="center"> <img src="https://img.shields.io/badge/Language-Go-blue?logo=go" /> <img src="https://img.shields.io/badge/Target-Kotlin-purple?logo=kotlin" /> <img src="https://img.shields.io/badge/Status-In%20Development-yellow" /> <img src="https://img.shields.io/badge/Build-Source%20to%20Source-4caf50" /></p>
+<p align="center"> <img src="web/static/print-go2kt.png" alt="Go2Kotlin Demo" width="650"> </p> <p align="center"> <img src="https://img.shields.io/badge/Language-Go-blue?logo=go" /> <img src="https://img.shields.io/badge/Target-Kotlin-purple?logo=kotlin" /> <img src="https://img.shields.io/badge/Status-In%20Development-yellow" /> <img src="https://img.shields.io/badge/Build-Source%20to%20Source-4caf50" /></p>
 
 # Projeto Acadêmico
 
@@ -46,36 +46,23 @@ O processo segue uma linha de montagem linear:
 
 ## 2. Responsabilidade dos Módulos
 
-A comunicação entre os arquivos funciona assim:
+O projeto segue o Standard Go Project Layout para melhor organização:
 
-### **main.go**
+### **cmd/server/main.go**
 
 * Porta de entrada da aplicação.
 * Gerencia o servidor e serve a interface Web.
-* Recebe o JSON do frontend, executa o Parser e entrega a AST ao Transpilador.
+* Recebe o JSON do frontend e chama o pacote transpiler.
 
-### **visitor.go**
+### **pkg/transpiler/**
 
-* O “cérebro” do sistema.
-* Contém um grande `switch` que analisa os nós da AST.
-* Converte:
+Este pacote contém toda a lógica "core" do compilador:
 
-  * `ast.IfStmt` → `if`
-  * `ast.ForStmt` → `while`
+* visitor.go: O “cérebro” do sistema. Contém o switch que analisa os nós da AST (converte ast.IfStmt → if, etc.).
 
-### **types.go**
+* types.go: Implementa a tabela de conversão de tipos (int → Int, float64 → Double).
 
-* Implementa a tabela de conversão de tipos.
-* Exemplos:
-
-  * `int` → `Int`
-  * `float64` → `Double`
-  * Ponteiros viram tipos *nullable* (`?`).
-
-### **writer.go**
-
-* Responsável pela formatação e indentação.
-* Garante que o código Kotlin gerado respeite blocos `{ }` e alinhamento visual.
+* writer.go: Responsável pela formatação, indentação e geração da string final em Kotlin.
 
 ## 3. Status da Implementação
 
@@ -94,18 +81,15 @@ O projeto implementa o **Subset Inicial** da linguagem.
 * **Visual Mirroring:**
   O código Kotlin mantém alinhamento vertical do código Go original.
 
----
-
 ## Limitações Atuais (Roadmap)
 
-* **Goroutines/Channels:**
-  Ainda não converte `go func()` para Coroutines.
-* **Structs / OO:**
-  Métodos com receiver viram funções soltas.
-* **Tratamento de Erros:**
-  Retornos múltiplos `(Data, error)` ainda não viram `Result<Data>`.
+* Goroutines/Channels: Suporte experimental (mapeado para Coroutines/Channels).
 
-## 🚀 Como Rodar
+* Structs / OO: Métodos com receiver viram Extension Functions.
+
+* Tratamento de Erros: Retornos múltiplos (Data, error) ainda precisam de ajustes manuais.
+
+## Como Rodar
 
 ### Pré-requisitos
 
@@ -116,7 +100,7 @@ O projeto implementa o **Subset Inicial** da linguagem.
 Clone o repositório e, na raiz, execute:
 
 ```sh
-go run .
+go run cmd/server/main.go
 ```
 
 Acesse no navegador:
@@ -125,17 +109,27 @@ Acesse no navegador:
 http://localhost:8080
 ```
 
----
-
-## 📂 Estrutura de Pastas
+## Estrutura de Pastas
 
 ```
 /
-├── main.go         # Servidor Web
-├── visitor.go      # Lógica de navegação na AST
-├── writer.go       # Utilitários de escrita e indentação
-├── types.go        # Tabela de conversão de tipos
-├── index.html      # Frontend (Editor com Syntax Highlighting)
-├── print-go2kt.png # Screenshot do projeto
-└── README.md       # Documentação
+├── cmd/
+│   └── server/
+│       └── main.go          # Entry point do servidor
+│
+├── pkg/
+│   └── transpiler/          # Lógica CORE do compilador
+│       ├── visitor.go
+│       ├── writer.go
+│       └── types.go
+│
+├── web/                     # Frontend da Aplicação
+│   ├── templates/
+│   │   └── index.html       # Editor Web
+│   └── static/
+│       └── img/             # Assets (Imagens)
+│
+├── examples/                # Casos de teste
+└── README.md                # Documentação
+
 ```
