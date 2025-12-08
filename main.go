@@ -50,11 +50,9 @@ func handleTranspile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- LÓGICA DE TRANSPILAÇÃO (A mesma que usávamos antes) ---
 	
 	// 1. Parse do código recebido (string)
 	fset := token.NewFileSet()
-	// "editor.go" é um nome fictício para o parser
 	node, err := parser.ParseFile(fset, "editor.go", req.GoCode, parser.ParseComments)
 	
 	response := ResponseBody{}

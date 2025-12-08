@@ -15,17 +15,16 @@
             --window-bg: #ffffff;
             --border-color: #e1e4e8;
             
-            /* --- CORES DO TEMA (Baseado no seu print "Min Light/GitHub") --- */
-            --k-keyword: #d73a49;   /* Vermelho (func, var, return) */
-            --k-func: #6f42c1;      /* Roxo (main, Println) */
-            --k-string: #22863a;    /* Verde ("Texto") */
-            --k-number: #005cc5;    /* Azul (10, 5) */
-            --k-type: #d73a49;      /* Vermelho (int, string) */
-            --k-operator: #d73a49;  /* Vermelho (*, :=) */
-            --k-comment: #6a737d;   /* Cinza */
-            --k-text: #24292e;      /* Preto Suave */
+            /* Cores do Tema */
+            --k-keyword: #d73a49;   
+            --k-func: #6f42c1;      
+            --k-string: #22863a;    
+            --k-number: #005cc5;    
+            --k-type: #d73a49;      
+            --k-operator: #d73a49;  
+            --k-comment: #6a737d;   
+            --k-text: #24292e;      
             
-            /* Cor do Botão que você gostou */
             --btn-green: #28a745;
         }
 
@@ -43,13 +42,13 @@
                 linear-gradient(90deg, #e1e4e8 1px, transparent 1px),
                 linear-gradient(#e1e4e8 1px, transparent 1px);
             background-size: 40px 40px;
-            overflow: hidden; /* Impede scroll na página inteira */
+            overflow: hidden;
         }
 
         .window-frame {
             width: 95%;
             max-width: 1400px;
-            height: 90vh; /* Altura fixa para forçar scroll interno */
+            height: 90vh;
             background-color: var(--window-bg);
             border-radius: 8px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.1);
@@ -63,11 +62,12 @@
         .title-bar {
             background: #ffffff;
             padding: 15px 20px;
-            border-bottom: 2px solid #6f42c1; /* Detalhe Roxo sutil */
+            border-bottom: 2px solid #6f42c1;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
+            user-select: none;
         }
 
         .traffic-lights { display: flex; gap: 8px; }
@@ -89,12 +89,11 @@
             flex-shrink: 0;
         }
 
-        .prompt { font-size: 0.95rem; }
+        .prompt { font-size: 0.95rem; display: flex; align-items: center; gap: 0px;}
         .prompt span.user { color: var(--k-keyword); font-weight: bold; }
         .prompt span.host { color: var(--k-number); font-weight: bold; }
         .prompt span.path { color: var(--k-comment); }
 
-        /* --- O BOTÃO QUE VOCÊ GOSTOU (Estilo Retro/3D) --- */
         .btn-run {
             background: #fff;
             border: 2px solid var(--btn-green);
@@ -104,68 +103,97 @@
             font-weight: 800;
             cursor: pointer;
             border-radius: 6px;
-            box-shadow: 3px 3px 0 var(--btn-green); /* Sombra sólida */
+            box-shadow: 3px 3px 0 var(--btn-green);
             transition: transform 0.1s, box-shadow 0.1s;
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .btn-run:hover {
-            background-color: var(--btn-green);
-            color: white;
-        }
-        .btn-run:active {
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0 var(--btn-green);
-        }
+        .btn-run:hover { background-color: var(--btn-green); color: white; }
+        .btn-run:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--btn-green); }
 
-        /* --- WORKSPACE (CORREÇÃO DO SCROLL) --- */
+        /* --- WORKSPACE --- */
         .workspace { 
             flex: 1; 
             display: flex; 
             position: relative; 
-            min-height: 0; /* O SEGREDO DO SCROLL */
+            min-height: 0; 
+            overflow: hidden;
         }
 
         .pane { 
-            flex: 1; 
+            width: 50%; 
             display: flex; 
             flex-direction: column; 
-            border-right: 1px solid var(--border-color); 
             position: relative; 
-            min-height: 0; /* O SEGREDO DO SCROLL */
+            min-height: 0;
+            min-width: 200px;
         }
         
+        .gutter {
+            width: 10px;
+            background-color: #f0f0f0;
+            border-left: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            cursor: col-resize;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background-color 0.2s;
+        }
+
+        .gutter:hover, .gutter.dragging {
+            background-color: #d1d5db;
+        }
+
+        .gutter::after {
+            content: "";
+            height: 20px;
+            width: 2px;
+            background-color: #999;
+            border-radius: 1px;
+        }
+
         .lang-badge {
             position: absolute; top: 15px; right: 20px;
             padding: 4px 10px; font-size: 0.75rem; font-weight: 700;
             border-radius: 4px; z-index: 10; pointer-events: none;
             text-transform: uppercase;
             border: 1px solid;
+            background: rgba(255,255,255,0.9);
         }
         .badge-go { background: #e0f2fe; color: var(--k-number); border-color: #bae6fd; }
         .badge-kt { background: #f3e8ff; color: var(--k-func); border-color: #e9d5ff; }
 
-        /* --- UNIFICAÇÃO DAS FONTES --- */
-        /* Aplica a todas as classes de editor (div, pre, code) */
-        .editor, pre.editor, code[class*="language-"], pre[class*="language-"] {
-            font-family: var(--font-main) !important;
-            font-size: var(--font-size-editor) !important;
-            line-height: var(--line-height-editor) !important;
-        }
-
-        /* Editor com Scroll Interno */
-        .editor {
-            flex: 1;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            padding: 40px 20px 20px 20px;
+        .editor, pre[class*="language-"] {
+            font-family: 'JetBrains Mono', monospace !important;
+            
+            font-size: 16px !important; 
+            
+            line-height: 1.6 !important;
+            
+            padding: 25px !important;
+            margin: 0 !important;
+            
+            tab-size: 4 !important;
+            -moz-tab-size: 4 !important;
+            
+            box-sizing: border-box;
             outline: none;
-            overflow: auto; /* Scrollbar aparece aqui dentro */
-            color: var(--k-text);
-            white-space: pre;
+            overflow: auto;
+            flex: 1;
+
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
         }
 
-        /* --- HIGHLIGHTING (Cores do Min Light) --- */
+        .editor {
+            color: var(--k-text);
+        }
+
+        /* Cores de Sintaxe */
         .token.keyword { color: var(--k-keyword) !important; font-weight: 700; }
         .token.function, .token.package { color: var(--k-func) !important; font-weight: 700; }
         .token.builtin, .token.class-name { color: var(--k-type) !important; }
@@ -180,6 +208,7 @@
             background: #fafafa; border-top: 1px solid var(--border-color);
             padding: 8px 20px; font-size: 0.8rem; color: #666;
             display: flex; gap: 15px; flex-shrink: 0;
+            justify-content: space-between;
         }
     </style>
 </head>
@@ -198,30 +227,59 @@
             <div class="prompt">
                 <span class="user">gopher</span>@<span class="host">go2kotlin</span>:<span class="path">~/transpiler</span>$
             </div>
-            <button class="btn-run" onclick="runTranspiler()">BUILD & RUN</button>
+            
+            <button class="btn-run" onclick="runTranspiler()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                BUILD & RUN
+            </button>
         </div>
 
-        <div class="workspace">
-            <div class="pane">
+        <div class="workspace" id="workspace">
+            <!-- PAINEL ESQUERDO (GO) -->
+            <div class="pane" id="pane-go">
                 <div class="lang-badge badge-go">GO</div>
                 <div id="editor-go" class="editor language-go">package main
 
 import "fmt"
 
-func main() {
-	// Teste de variáveis e tipos primitivos
-	var idade int = 30
-	var nome string = "Go Transpiler"
-	ativo := true
+// Definição de Struct
+type Produto struct {
+	Nome  string
+	Preco float64
+}
 
-	if ativo {
-		fmt.Println(nome)
-		fmt.Println(idade)
+// Método associado à struct
+func (p Produto) Detalhes() {
+	fmt.Printf("Produto: %s | Valor: %.2f\n", p.Nome, p.Preco)
+}
+
+func main() {
+	fmt.Println("=== Sistema de Vendas ===")
+
+	// Criação de objeto e variáveis
+	p1 := Produto{"Notebook", 3500.00}
+	estoque := 5
+
+	// Controle de fluxo (IF/ELSE)
+	if estoque > 0 {
+		p1.Detalhes()
+	} else {
+		fmt.Println("Produto esgotado!")
+	}
+
+	// Loop (FOR)
+	fmt.Println("\nContando itens:")
+	for i := 1; i <= 3; i++ {
+		fmt.Printf("Item %d processado.\n", i)
 	}
 }</div>
             </div>
 
-            <div class="pane" style="background:#fbfbfb;">
+            <!-- DIVISOR REDIMENSIONÁVEL -->
+            <div class="gutter" id="gutter"></div>
+
+            <!-- PAINEL DIREITO (KOTLIN) -->
+            <div class="pane" id="pane-kt" style="background:#fbfbfb; flex: 1; outline:none;" tabindex="0">
                 <div class="lang-badge badge-kt">KOTLIN</div>
                 <pre id="editor-kt" class="editor language-kotlin" style="margin:0; background:transparent;"></pre>
             </div>
@@ -229,6 +287,7 @@ func main() {
 
         <div class="status-bar">
             <div>STATUS: <span id="status-text" style="color:var(--btn-green); font-weight:bold;">READY</span></div>
+            <div style="font-size:0.75rem; opacity:0.7;">Compiladores 2024.2 - UERN</div>
         </div>
     </div>
 
@@ -240,20 +299,67 @@ func main() {
         import { CodeJar } from 'https://medv.io/codejar/codejar.js';
 
         const editorElement = document.querySelector('#editor-go');
+        const outputEl = document.getElementById('editor-kt');
+        const paneKt = document.getElementById('pane-kt'); // Captura o painel direito para foco
+        const statusText = document.getElementById('status-text');
         
+        // --- Highlight ---
         const highlight = editor => {
             editor.textContent = editor.textContent;
             Prism.highlightElement(editor);
         };
-
         const jar = CodeJar(editorElement, highlight);
         Prism.highlightElement(editorElement); 
 
+        paneKt.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+                e.preventDefault();
+                
+                const range = document.createRange();
+                range.selectNodeContents(outputEl);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        });
+
+        const gutter = document.getElementById('gutter');
+        const leftPane = document.getElementById('pane-go');
+        const workspace = document.getElementById('workspace');
+        let isResizing = false;
+
+        gutter.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            gutter.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none'; 
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const containerRect = workspace.getBoundingClientRect();
+            let newWidth = e.clientX - containerRect.left;
+            
+            if (newWidth < 100) newWidth = 100;
+            if (newWidth > containerRect.width - 100) newWidth = containerRect.width - 100;
+
+            const percent = (newWidth / containerRect.width) * 100;
+            leftPane.style.width = `${percent}%`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                gutter.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+
         window.runTranspiler = async function() {
             const goCode = jar.toString();
-            const outputEl = document.getElementById('editor-kt');
-            const statusText = document.getElementById('status-text');
-
+            
             statusText.innerText = "BUILDING...";
             statusText.style.color = "#e6a700";
             

@@ -6,18 +6,27 @@ import (
 	"strings"
 )
 
-// Transpiler mantém o estado da geração de código.
-// Ele encapsula o buffer de saída e o nível de indentação atual.
-type Transpiler struct {
-	fset        *token.FileSet // Usado para rastrear posições no arquivo original
-	output      bytes.Buffer   // Onde o código Kotlin é acumulado
-	indentLevel int            // Nível atual de indentação (tabs/espaços)
+// StructDef armazena metadados sobre as structs encontradas
+type StructDef struct {
+	Fields map[string]bool
+	Embeds []string
 }
 
-// NewTranspiler cria uma nova instância pronta para uso
+// Transpiler mantém o estado da geração de código.
+type Transpiler struct {
+	fset        *token.FileSet
+	output      bytes.Buffer
+	indentLevel int
+	structs map[string]StructDef 
+	vars    map[string]string    
+}
+
+// NewTranspiler inicializa os mapas
 func NewTranspiler() *Transpiler {
 	return &Transpiler{
-		fset: token.NewFileSet(),
+		fset:    token.NewFileSet(),
+		structs: make(map[string]StructDef),
+		vars:    make(map[string]string),
 	}
 }
 
@@ -38,19 +47,16 @@ func (t *Transpiler) unindent() {
 	}
 }
 
-// Escreve string crua no buffer
 func (t *Transpiler) write(s string) {
 	t.output.WriteString(s)
 }
 
-// Escreve uma linha completa com a indentação correta e quebra de linha
 func (t *Transpiler) writeLine(s string) {
 	t.output.WriteString(strings.Repeat("    ", t.indentLevel))
 	t.output.WriteString(s)
 	t.output.WriteString("\n")
 }
 
-// Apenas insere os espaços de indentação (útil para inícios de blocos)
 func (t *Transpiler) writeIndent() {
 	t.output.WriteString(strings.Repeat("    ", t.indentLevel))
 }
