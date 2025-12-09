@@ -17,16 +17,22 @@ type Transpiler struct {
 	fset        *token.FileSet
 	output      bytes.Buffer
 	indentLevel int
-	structs map[string]StructDef 
-	vars    map[string]string    
+	structs     map[string]StructDef 
+	vars        map[string]string    
+	
+	// Flags de Análise Semântica
+	usesCoroutines bool
+	usesChannels   bool
 }
 
-// NewTranspiler inicializa os mapas
+// NewTranspiler inicializa os mapas e flags
 func NewTranspiler() *Transpiler {
 	return &Transpiler{
-		fset:    token.NewFileSet(),
-		structs: make(map[string]StructDef),
-		vars:    make(map[string]string),
+		fset:           token.NewFileSet(),
+		structs:        make(map[string]StructDef),
+		vars:           make(map[string]string),
+		usesCoroutines: false,
+		usesChannels:   false,
 	}
 }
 

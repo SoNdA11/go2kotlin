@@ -7,15 +7,56 @@ import (
 	"strings"
 )
 
+// analyzeFeatures varre a árvore antes da transpilação para detectar
+// se recursos complexos (concorrência, canais) são usados.
+func (t *Transpiler) analyzeFeatures(node ast.Node) {
+	ast.Inspect(node, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.GoStmt:
+			t.usesCoroutines = true
+		case *ast.ChanType:
+			t.usesChannels = true
+			t.usesCoroutines = true 
+		case *ast.SendStmt:
+			t.usesChannels = true
+			t.usesCoroutines = true
+		case *ast.UnaryExpr:
+			if x.Op == token.ARROW { 
+				t.usesChannels = true
+				t.usesCoroutines = true
+			}
+		case *ast.CallExpr:
+			if sel, ok := x.Fun.(*ast.SelectorExpr); ok {
+				if id, ok := sel.X.(*ast.Ident); ok && id.Name == "time" && sel.Sel.Name == "Sleep" {
+					t.usesCoroutines = true
+				}
+			}
+			if id, ok := x.Fun.(*ast.Ident); ok && id.Name == "make" && len(x.Args) > 0 {
+				if _, ok := x.Args[0].(*ast.ChanType); ok {
+					t.usesChannels = true
+					t.usesCoroutines = true
+				}
+			}
+		}
+		return true
+	})
+}
+
 func (t *Transpiler) Transpile(node ast.Node) error {
 	switch n := node.(type) {
 	
 	case *ast.File:
+		t.analyzeFeatures(n)
+
 		t.writeLine("package " + n.Name.Name)
 		t.write("\n")
 		
-		t.writeLine("import kotlinx.coroutines.*")
-		t.writeLine("import kotlinx.coroutines.channels.Channel")
+		if t.usesCoroutines {
+			t.writeLine("import kotlinx.coroutines.*")
+		}
+		if t.usesChannels {
+			t.writeLine("import kotlinx.coroutines.channels.Channel")
+		}
 		
 		if len(n.Imports) > 0 {
 			for _, imp := range n.Imports {
@@ -139,7 +180,11 @@ func (t *Transpiler) Transpile(node ast.Node) error {
 		}
 		
 		if n.Name.Name == "main" {
-			t.write(" = runBlocking ")
+			if t.usesCoroutines {
+				t.write(" = runBlocking ")
+			} else {
+				t.write(" ")
+			}
 		} else {
 			t.write(" ")
 		}
