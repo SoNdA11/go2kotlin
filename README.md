@@ -100,7 +100,9 @@ O projeto implementa o **Subset Inicial** da linguagem.
 Clone o repositório e, na raiz, execute:
 
 ```sh
-go run cmd/server/main.go
+go build -o cmd/server/main.go
+
+./server
 ```
 
 Acesse no navegador:
