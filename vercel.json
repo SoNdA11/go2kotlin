@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "rewrites": [
+    { 
+      "source": "/api/transpile", 
+      "destination": "/api/transpile" 
+    },
+    { 
+      "source": "/transpile", 
+      "destination": "/api/transpile" 
+    },
+    {
+      "source": "/static/(.*)",
+      "destination": "/web/static/$1"
+    },
+    { 
+      "source": "/(.*)", 
+      "destination": "/web/templates/index.html" 
+    }
+  ]
+}
