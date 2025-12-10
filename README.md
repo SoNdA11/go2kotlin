@@ -182,13 +182,13 @@ go build -o server cmd/server/main.go
 #### Modo Dev
 
 ```powershell
-go run cmd/server/main.go
+go run cmd\server\main.go
 ```
 
 #### Produção
 
 ```powershell
-go build -o server.exe cmd/server/main.go
+go build -o server.exe cmd\server\main.go
 .\server.exe
 ```
 
