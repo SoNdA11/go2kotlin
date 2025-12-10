@@ -6,6 +6,10 @@
 
 Este projeto faz parte da disciplina **Compiladores e Paradigmas de Programação**, ministrada pelo professor **Sebastião Filho**, na **Universidade do Estado do Rio Grande do Norte (UERN)**.
 
+A documentação completa e os slides utilizados podem ser acessados no link abaixo:
+#### Drive do Projeto:
+https://drive.google.com/drive/folders/16GjEYn2cKVCNFeUAzE7NLycY5fKq8fbY?usp=sharing
+
 ---
 
 ## Grupo de Desenvolvimento
